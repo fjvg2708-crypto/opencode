@@ -1,0 +1,233 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --scrollbar-thumb: #2A2A2A;
+    --scrollbar-track: #111111;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-dg-black text-dg-white font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #404040;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-dg-gray rounded-2xl border border-dg-gray-3 p-6;
+  }
+
+  .card-sm {
+    @apply bg-dg-gray rounded-xl border border-dg-gray-3 p-4;
+  }
+
+  .btn-primary {
+    @apply bg-dg-yellow text-dg-black font-semibold px-6 py-3 rounded-xl
+           hover:bg-dg-yellow-light transition-all duration-200
+           active:scale-95 shadow-lg shadow-dg-yellow/20;
+  }
+
+  .btn-secondary {
+    @apply bg-dg-gray-3 text-dg-white font-medium px-6 py-3 rounded-xl
+           hover:bg-dg-gray-4 transition-all duration-200
+           border border-dg-gray-4 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply text-dg-gray-light font-medium px-4 py-2 rounded-lg
+           hover:bg-dg-gray-2 hover:text-dg-white transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-red-600/20 text-red-400 font-medium px-6 py-3 rounded-xl
+           hover:bg-red-600/30 transition-all duration-200
+           border border-red-600/30 active:scale-95;
+  }
+
+  .input {
+    @apply bg-dg-gray-2 border border-dg-gray-4 rounded-xl px-4 py-3
+           text-dg-white placeholder-dg-gray-light
+           focus:outline-none focus:border-dg-yellow focus:ring-1 focus:ring-dg-yellow/30
+           transition-all duration-200 w-full;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-yellow {
+    @apply badge bg-dg-yellow/20 text-dg-yellow border border-dg-yellow/30;
+  }
+
+  .badge-green {
+    @apply badge bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+
+  .badge-red {
+    @apply badge bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .badge-blue {
+    @apply badge bg-blue-500/20 text-blue-400 border border-blue-500/30;
+  }
+
+  .badge-gray {
+    @apply badge bg-dg-gray-4 text-dg-gray-light border border-dg-gray-5;
+  }
+
+  .stat-card {
+    @apply card flex flex-col gap-3 hover:border-dg-yellow/30 transition-all duration-300 cursor-pointer;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-dg-gray-light
+           hover:bg-dg-gray-2 hover:text-dg-white transition-all duration-200
+           font-medium text-sm;
+  }
+
+  .nav-item-active {
+    @apply nav-item bg-dg-yellow/10 text-dg-yellow border border-dg-yellow/20;
+  }
+
+  .glass {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10;
+  }
+
+  .glow-yellow {
+    box-shadow: 0 0 20px rgba(245, 197, 24, 0.15);
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-dg-yellow to-dg-yellow-light bg-clip-text text-transparent;
+  }
+
+  .photo-grid {
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .photo-grid-3 {
+    @apply grid grid-cols-3 gap-1.5;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .divider {
+    @apply border-t border-dg-gray-3;
+  }
+
+  .section-title {
+    @apply text-lg font-bold text-dg-white mb-4;
+  }
+
+  .page-header {
+    @apply mb-8;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-dg-white;
+  }
+
+  .page-subtitle {
+    @apply text-dg-gray-light text-sm mt-1;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Leaflet map dark theme overrides */
+.leaflet-container {
+  background: #111111;
+  font-family: 'Inter', sans-serif;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1A1A1A;
+  color: #F5F5F5;
+  border: 1px solid #2A2A2A;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.leaflet-popup-tip {
+  background: #1A1A1A;
+}
+
+.leaflet-control-zoom a {
+  background-color: #1A1A1A;
+  color: #F5F5F5;
+  border-color: #2A2A2A;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: #2A2A2A;
+}
+
+/* Progress bar animations */
+@keyframes progressFill {
+  from { width: 0%; }
+  to { width: var(--progress); }
+}
+
+.progress-animated {
+  animation: progressFill 1s ease-out forwards;
+}
+
+/* Custom range input */
+input[type="range"] {
+  @apply appearance-none bg-dg-gray-4 rounded-full h-1.5 outline-none cursor-pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none w-4 h-4 rounded-full bg-dg-yellow cursor-pointer;
+}
+
+/* Toast overrides */
+.react-hot-toast {
+  background: #1A1A1A !important;
+  color: #F5F5F5 !important;
+  border: 1px solid #2A2A2A !important;
+}
