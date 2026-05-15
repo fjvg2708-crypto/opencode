@@ -633,8 +633,6 @@ function StepRevisao({
     { label: 'Observações escritas', ok: notes.length > 0, optional: true },
   ]
 
-  const allRequired = validationItems.filter((v) => !v.optional).every((v) => v.ok)
-
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Summary card */}
