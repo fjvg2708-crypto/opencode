@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Blue background circle -->
+  <circle cx="100" cy="100" r="100" fill="#0033CC"/>
+
+  <!-- White ring -->
+  <circle cx="100" cy="100" r="84" fill="none" stroke="white" stroke-width="6"/>
+
+  <!--
+    Stylized D / page icon (white)
+    Outer silhouette: bold D with chamfered top-right corner
+    Inner hollow with folded bottom-left notch
+    Using even-odd fill so inner path punches through outer
+  -->
+  <path
+    fill-rule="evenodd"
+    fill="white"
+    d="
+      M 62 44
+      L 62 156
+      L 108 156
+      Q 148 156 148 116
+      L 148 84
+      Q 148 44 108 44
+      L 62 44 Z
+
+      M 79 63
+      L 112 63
+      Q 131 63 131 82
+      L 131 118
+      Q 131 137 112 137
+      L 79 137
+      L 79 116
+      L 66 116
+      L 79 103
+      L 79 63 Z
+    "
+  />
+</svg>

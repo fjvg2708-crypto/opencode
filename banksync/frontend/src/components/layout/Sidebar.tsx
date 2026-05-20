@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import api from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { LogoFull } from "@/components/brand/Logo";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -36,35 +37,32 @@ export function Sidebar() {
   const selectedCompany = companies.find((c: any) => c.id === selectedCompanyId);
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-[#1e3a8a] text-white">
-      <div className="px-6 py-5 border-b border-blue-700">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-400 rounded-lg flex items-center justify-center text-sm font-bold">DG</div>
-          <div>
-            <p className="text-sm font-bold leading-none">BankSync</p>
-            <p className="text-xs text-blue-300 mt-0.5">Portugal</p>
-          </div>
-        </div>
+    <aside className="flex flex-col w-64 min-h-screen text-white"
+      style={{ background: "linear-gradient(180deg, #001f80 0%, #0033CC 60%, #0044ee 100%)" }}>
+
+      {/* Logo header */}
+      <div className="px-5 py-5 border-b border-white/10">
+        <LogoFull size={40} textColor="white" />
       </div>
 
       {/* Company selector */}
-      <div className="px-4 py-3 border-b border-blue-700">
+      <div className="px-4 py-3 border-b border-white/10">
         <button
           onClick={() => setCompanyOpen(!companyOpen)}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-blue-700/50 hover:bg-blue-700 transition-colors text-sm"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm"
         >
           <span className="truncate">{selectedCompany?.name || "Selecionar empresa"}</span>
           <ChevronDown className={cn("h-4 w-4 flex-shrink-0 transition-transform", companyOpen && "rotate-180")} />
         </button>
         {companyOpen && (
-          <div className="mt-1 bg-blue-800 rounded-lg overflow-hidden">
+          <div className="mt-1 bg-[#001f80] rounded-lg overflow-hidden">
             {companies.map((c: any) => (
               <button
                 key={c.id}
                 onClick={() => { setSelectedCompany(c.id); setCompanyOpen(false); }}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-sm hover:bg-blue-700 transition-colors",
-                  c.id === selectedCompanyId && "bg-blue-700 font-medium"
+                  "w-full text-left px-3 py-2 text-sm hover:bg-white/10 transition-colors",
+                  c.id === selectedCompanyId && "bg-white/15 font-medium"
                 )}
               >
                 {c.name}
@@ -84,8 +82,8 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                 active
-                  ? "bg-blue-600 text-white font-medium"
-                  : "text-blue-100 hover:bg-blue-700/60 hover:text-white"
+                  ? "bg-white/20 text-white font-semibold shadow-sm"
+                  : "text-white/75 hover:bg-white/10 hover:text-white"
               )}
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
@@ -95,19 +93,19 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="px-3 py-4 border-t border-blue-700">
+      <div className="px-3 py-4 border-t border-white/10">
         <div className="flex items-center gap-3 px-3 py-2 mb-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold uppercase">
+          <div className="w-8 h-8 bg-white/20 border border-white/30 rounded-full flex items-center justify-center text-xs font-bold uppercase">
             {user?.full_name?.[0] || "U"}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{user?.full_name}</p>
-            <p className="text-xs text-blue-300 truncate">{user?.email}</p>
+            <p className="text-xs text-white/50 truncate">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-blue-200 hover:bg-blue-700/60 hover:text-white transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/60 hover:bg-white/10 hover:text-white transition-colors"
         >
           <LogOut className="h-4 w-4" />
           Sair
