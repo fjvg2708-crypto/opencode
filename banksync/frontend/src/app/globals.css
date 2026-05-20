@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply antialiased;
+}
+
+.stat-card {
+  @apply bg-white rounded-xl border border-gray-200 shadow-sm p-6;
+}
