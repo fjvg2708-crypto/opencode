@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0033CC"/>
+<title>DG BankSync Portugal — Demo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --blue:#0033CC;--blue-dark:#001f80;--blue-mid:#0044ee;
+    --white:#ffffff;--gray:#f4f6fb;--gray2:#e8ecf4;
+    --text:#1a1f36;--text2:#6b7280;--green:#10b981;--red:#ef4444;
+    --radius:14px;--shadow:0 4px 24px rgba(0,51,204,.13);
+  }
+  html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4ff;overflow:hidden}
+
+  /* ── SCREENS ── */
+  .screen{
+    position:absolute;inset:0;display:none;flex-direction:column;
+    background:var(--gray);overflow:hidden;
+    transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .28s;
+    transform:translateX(100%);opacity:0;
+  }
+  .screen.active{display:flex;transform:translateX(0);opacity:1}
+  .screen.prev{display:flex;transform:translateX(-40%);opacity:.4}
+
+  /* ── TOPBAR ── */
+  .topbar{
+    background:linear-gradient(135deg,var(--blue-dark) 0%,var(--blue) 100%);
+    color:#fff;padding:env(safe-area-inset-top,16px) 16px 14px;
+    display:flex;align-items:center;gap:12px;flex-shrink:0;
+    box-shadow:0 2px 12px rgba(0,51,204,.3);
+  }
+  .topbar .back{
+    width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);
+    border:none;color:#fff;font-size:18px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .topbar h1{font-size:17px;font-weight:700;flex:1}
+  .topbar .action{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);
+    border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+  /* ── SCROLLABLE CONTENT ── */
+  .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;padding-bottom:90px}
+
+  /* ── BOTTOM NAV ── */
+  .bottomnav{
+    position:absolute;bottom:0;left:0;right:0;
+    background:#fff;border-top:1px solid #e5e7eb;
+    display:grid;grid-template-columns:repeat(5,1fr);
+    padding-bottom:env(safe-area-inset-bottom,8px);
+    box-shadow:0 -4px 20px rgba(0,0,0,.08);
+    flex-shrink:0;z-index:10;
+  }
+  .nav-item{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:8px 4px;cursor:pointer;border:none;background:none;
+    color:var(--text2);font-size:10px;font-weight:500;transition:color .2s;
+  }
+  .nav-item.active{color:var(--blue)}
+  .nav-item svg{width:22px;height:22px;stroke-width:1.8}
+  .nav-item.active svg{stroke-width:2.3}
+
+  /* ── CARDS ── */
+  .card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+  .card-header{padding:14px 16px 0;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+  .card-body{padding:14px 16px}
+
+  /* ── KPI CHIPS ── */
+  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .kpi{background:#fff;border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+  .kpi .label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  .kpi .value{font-size:22px;font-weight:800;color:var(--text);margin-top:4px;line-height:1}
+  .kpi .sub{font-size:11px;color:var(--text2);margin-top:4px}
+  .kpi.full{grid-column:1/-1}
+  .kpi.blue{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff}
+  .kpi.blue .label,.kpi.blue .value,.kpi.blue .sub{color:#fff}
+
+  /* ── BADGE ── */
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge.green{background:#d1fae5;color:#065f46}
+  .badge.blue{background:#dbeafe;color:#1e40af}
+  .badge.yellow{background:#fef3c7;color:#92400e}
+  .badge.red{background:#fee2e2;color:#991b1b}
+  .badge.gray{background:#f3f4f6;color:#374151}
+  .badge.purple{background:#ede9fe;color:#5b21b6}
+
+  /* ── LIST ROWS ── */
+  .list-row{
+    display:flex;align-items:center;gap:12px;padding:13px 16px;
+    border-bottom:1px solid #f3f4f6;cursor:pointer;
+    transition:background .15s;
+  }
+  .list-row:last-child{border-bottom:none}
+  .list-row:active{background:#f9fafb}
+  .list-row .icon{
+    width:40px;height:40px;border-radius:12px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+  }
+  .list-row .main{flex:1;min-width:0}
+  .list-row .title{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .list-row .desc{font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .list-row .right{text-align:right;flex-shrink:0}
+  .list-row .amount{font-size:14px;font-weight:700}
+  .list-row .amount.pos{color:var(--green)}
+  .list-row .amount.neg{color:var(--red)}
+  .list-row .date{font-size:11px;color:var(--text2);margin-top:1px}
+
+  /* ── MINI CHART (CSS bars) ── */
+  .bar-chart{display:flex;align-items:flex-end;gap:4px;height:72px;margin-top:8px}
+  .bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .bar{width:100%;border-radius:5px 5px 0 0;transition:height .5s}
+  .bar.in{background:linear-gradient(180deg,#34d399,#10b981)}
+  .bar.out{background:linear-gradient(180deg,#f87171,#ef4444)}
+  .bar-label{font-size:9px;color:var(--text2);font-weight:500}
+
+  /* ── DONUT (fake SVG) ── */
+  .donut-wrap{display:flex;align-items:center;gap:16px}
+  .donut-legend{flex:1}
+  .legend-item{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .legend-label{font-size:12px;color:var(--text2);flex:1}
+  .legend-val{font-size:12px;font-weight:700;color:var(--text)}
+
+  /* ── PROGRESS BAR ── */
+  .progress-row{margin-bottom:12px}
+  .progress-head{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+  .progress-head .pname{color:var(--text);font-weight:600}
+  .progress-head .pval{color:var(--text2)}
+  .progress-track{height:7px;background:var(--gray2);border-radius:6px;overflow:hidden}
+  .progress-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--blue),var(--blue-mid))}
+
+  /* ── BUTTON ── */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:13px 20px;border-radius:12px;font-size:14px;font-weight:700;
+    border:none;cursor:pointer;transition:all .18s;width:100%;
+  }
+  .btn.primary{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;box-shadow:0 4px 16px rgba(0,51,204,.35)}
+  .btn.primary:active{transform:scale(.97);box-shadow:0 2px 8px rgba(0,51,204,.3)}
+  .btn.ghost{background:var(--gray);color:var(--blue);border:1.5px solid var(--blue)}
+
+  /* ── INPUT ── */
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+  .field input,.field select{
+    width:100%;padding:13px 14px;border:1.5px solid var(--gray2);border-radius:11px;
+    font-size:15px;color:var(--text);background:#fff;outline:none;
+    transition:border-color .2s;
+  }
+  .field input:focus,.field select:focus{border-color:var(--blue)}
+
+  /* ── LOGIN ── */
+  #screen-login{background:linear-gradient(160deg,var(--blue-dark) 0%,var(--blue) 55%,#3366ff 100%)}
+  .login-blob{
+    position:absolute;border-radius:50%;background:rgba(255,255,255,.07);
+  }
+
+  /* ── ALERT ── */
+  .alert{border-radius:11px;padding:12px 14px;font-size:13px;font-weight:500;margin-bottom:14px}
+  .alert.green{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+  .alert.red{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+  .alert.blue{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd}
+
+  /* ── ACCOUNT CARD ── */
+  .acc-card{
+    background:linear-gradient(135deg,var(--blue-dark),var(--blue));
+    border-radius:18px;padding:20px;color:#fff;margin-bottom:12px;
+    box-shadow:0 8px 24px rgba(0,51,204,.3);position:relative;overflow:hidden;
+  }
+  .acc-card::after{
+    content:'';position:absolute;right:-30px;top:-30px;width:150px;height:150px;
+    border-radius:50%;background:rgba(255,255,255,.08);
+  }
+  .acc-card .acc-bank{font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+  .acc-card .acc-name{font-size:15px;font-weight:700;margin:4px 0}
+  .acc-card .acc-iban{font-size:11px;opacity:.6;font-family:monospace;letter-spacing:.04em}
+  .acc-card .acc-balance{font-size:30px;font-weight:800;margin-top:14px}
+  .acc-card .acc-currency{font-size:13px;opacity:.7;margin-top:2px}
+
+  /* ── SECTION TITLE ── */
+  .section-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin:18px 0 10px}
+
+  /* ── PILL TABS ── */
+  .pills{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .pills::-webkit-scrollbar{display:none}
+  .pill{flex-shrink:0;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s}
+  .pill.active{background:var(--blue);color:#fff;box-shadow:0 3px 10px rgba(0,51,204,.3)}
+  .pill:not(.active){background:#fff;color:var(--text2);box-shadow:var(--shadow)}
+
+  /* ── FAB ── */
+  .fab{
+    position:fixed;bottom:80px;right:20px;width:54px;height:54px;
+    border-radius:50%;background:linear-gradient(135deg,var(--blue-dark),var(--blue));
+    color:#fff;border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 20px rgba(0,51,204,.4);font-size:26px;
+    z-index:20;transition:transform .2s;
+  }
+  .fab:active{transform:scale(.92)}
+
+  /* ── STAT ROW ── */
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f3f4f6}
+  .stat-row:last-child{border-bottom:none}
+  .stat-row .sname{font-size:13px;color:var(--text2)}
+  .stat-row .sval{font-size:14px;font-weight:700;color:var(--text)}
+
+  /* ── SKELETON ── */
+  @keyframes shimmer{0%{background-position:-200%}100%{background-position:200%}}
+  .skel{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);
+    background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 1 — LOGIN
+══════════════════════════════════════════ -->
+<div id="screen-login" class="screen active" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;transform:none;opacity:1">
+  <div class="login-blob" style="width:250px;height:250px;top:-80px;left:-60px"></div>
+  <div class="login-blob" style="width:180px;height:180px;bottom:-40px;right:-40px"></div>
+  <div class="login-blob" style="width:120px;height:120px;top:40%;left:60%"></div>
+
+  <!-- Logo -->
+  <div style="margin-bottom:32px;text-align:center">
+    <svg width="88" height="88" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="100" fill="rgba(255,255,255,.15)"/>
+      <circle cx="100" cy="100" r="84" fill="none" stroke="white" stroke-width="6"/>
+      <path fill-rule="evenodd" fill="white"
+        d="M62 44L62 156L108 156Q148 156 148 116L148 84Q148 44 108 44Z
+           M79 63L112 63Q131 63 131 82L131 118Q131 137 112 137L79 137L79 116L66 116L79 103Z"/>
+    </svg>
+    <div style="color:white;font-size:26px;font-weight:800;margin-top:12px;letter-spacing:-.5px">BankSync</div>
+    <div style="color:rgba(255,255,255,.6);font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin-top:3px">Portugal</div>
+  </div>
+
+  <!-- Card -->
+  <div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Bem-vindo</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Aceda à sua conta empresarial</div>
+
+    <div class="field">
+      <label>Email</label>
+      <input type="email" value="admin@dg-banksync.pt" placeholder="utilizador@empresa.pt"/>
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" value="Admin@12345" placeholder="••••••••"/>
+    </div>
+
+    <button class="btn primary" onclick="goTo('dashboard')" style="margin-top:8px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+      Iniciar Sessão
+    </button>
+
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text2)">
+      Protegido com autenticação 2FA · PSD2 Compliant
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SCREEN 2 — DASHBOARD
+══════════════════════════════════════════ -->
+<div id="screen-dashboard" class="screen">
+  <div class="topbar" style="padding-top:calc(env(safe-area-inset-top,0px) + 14px)">
+    <svg width="30" height="30" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="100" fill="rgba(255,255,255,.15)"/>
+      <circle cx="100" cy="100" r="84" fill="none" stroke="white" stroke-width="7"/>
+      <path fill-rule="evenodd" fill="white"
+        d="M62 44L62 156L108 156Q148 156 148 116L148 84Q148 44 108 44Z
+           M79 63L112 63Q131 63 131 82L131 118Q131 137 112 137L79 137L79 116L66 116L79 103Z"/>
+    </svg>
+    <div style="flex:1">
+      <div style="font-size:16px;font-weight:800">Dashboard</div>
+      <div style="font-size:11px;opacity:.6">DG Holding, Lda.</div>
+    </div>
+    <button class="action" style="background:rgba(255,255,255,.15);border:none;border-radius:50%;width:36px;height:36px;color:#fff;display:flex;align-items:center;justify-content:center">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+    </button>
+  </div>
+
+  <div class="content">
+    <!-- Balance hero -->
+    <div class="acc-card" onclick="goTo('banking')">
+      <div class="acc-bank">Caixa Geral de Depósitos</div>
+      <div class="acc-name">Conta Principal</div>
+      <div class="acc-iban">PT50 0033 0000 1234 5678 901 23</div>
+      <div class="acc-balance">125.000,00 €</div>
+      <div class="acc-currency">Disponível: 124.500,00 €</div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi" onclick="goTo('transactions')">
+        <div class="label">Entradas 30d</div>
+        <div class="value" style="color:var(--green)">+48.200€</div>
+        <div class="sub">↑ 12% vs mês ant.</div>
+      </div>
+      <div class="kpi" onclick="goTo('transactions')">
+        <div class="label">Saídas 30d</div>
+        <div class="value" style="color:var(--red)">-31.750€</div>
+        <div class="sub">↓ 5% vs mês ant.</div>
+      </div>
+      <div class="kpi" onclick="goTo('factoring')">
+        <div class="label">Factoring</div>
+        <div class="value">92.400€</div>
+        <div class="sub">4 faturas pendentes</div>
+      </div>
+      <div class="kpi" onclick="goTo('confirming')">
+        <div class="label">Confirming</div>
+        <div class="value">27.800€</div>
+        <div class="sub">3 ordens ativas</div>
+      </div>
+    </div>
+
+    <!-- Cash flow chart -->
+    <div class="card">
+      <div class="card-header">Fluxo de Caixa — últimas 4 semanas</div>
+      <div class="card-body">
+        <div class="bar-chart">
+          <div class="bar-wrap"><div class="bar in" style="height:45%"></div><div class="bar out" style="height:55%"></div><div class="bar-label">S1</div></div>
+          <div class="bar-wrap"><div class="bar in" style="height:65%"></div><div class="bar out" style="height:40%"></div><div class="bar-label">S2</div></div>
+          <div class="bar-wrap"><div class="bar in" style="height:55%"></div><div class="bar out" style="height:70%"></div><div class="bar-label">S3</div></div>
+          <div class="bar-wrap"><div class="bar in" style="height:80%"></div><div class="bar out" style="height:50%"></div><div class="bar-label">S4</div></div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:10px">
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:10px;height:10px;border-radius:3px;background:var(--green)"></div>Entradas</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:10px;height:10px;border-radius:3px;background:var(--red)"></div>Saídas</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Categorias -->
+    <div class="card">
+      <div class="card-header">Categorias de Despesa</div>
+      <div class="card-body">
+        <div class="progress-row"><div class="progress-head"><span class="pname">Fornecedores</span><span class="pval">14.200€</span></div><div class="progress-track"><div class="progress-fill" style="width:68%"></div></div></div>
+        <div class="progress-row"><div class="progress-head"><span class="pname">Salários</span><span class="pval">9.800€</span></div><div class="progress-track"><div class="progress-fill" style="width:47%;background:linear-gradient(90deg,#7c3aed,#8b5cf6)"></div></div></div>
+        <div class="progress-row"><div class="progress-head"><span class="pname">Serviços</span><span class="pval">4.300€</span></div><div class="progress-track"><div class="progress-fill" style="width:28%;background:linear-gradient(90deg,#0891b2,#06b6d4)"></div></div></div>
+        <div class="progress-row"><div class="progress-head"><span class="pname">Outros</span><span class="pval">3.450€</span></div><div class="progress-track"><div class="progress-fill" style="width:22%;background:linear-gradient(90deg,#d97706,#f59e0b)"></div></div></div>
+      </div>
+    </div>
+
+    <!-- Top contrapartes -->
+    <div class="section-title">Principais Contrapartes (30d)</div>
+    <div class="card">
+      <div class="list-row"><div class="icon" style="background:#eff6ff;color:var(--blue);font-weight:800;font-size:13px">1</div><div class="main"><div class="title">Transportes Maia, SA</div><div class="desc">8 transações</div></div><div class="right"><div class="amount neg">-8.200€</div></div></div>
+      <div class="list-row"><div class="icon" style="background:#eff6ff;color:var(--blue);font-weight:800;font-size:13px">2</div><div class="main"><div class="title">Construções Silva</div><div class="desc">5 transações</div></div><div class="right"><div class="amount neg">-6.750€</div></div></div>
+      <div class="list-row"><div class="icon" style="background:#eff6ff;color:var(--blue);font-weight:800;font-size:13px">3</div><div class="main"><div class="title">Cliente Europa, Lda</div><div class="desc">3 transações</div></div><div class="right"><div class="amount pos">+22.400€</div></div></div>
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-item active" onclick="goTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="goTo('banking')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Contas
+    </button>
+    <button class="nav-item" onclick="goTo('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      Movimentos
+    </button>
+    <button class="nav-item" onclick="goTo('factoring')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Factoring
+    </button>
+    <button class="nav-item" onclick="goTo('more')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      Mais
+    </button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SCREEN 3 — BANKING
+══════════════════════════════════════════ -->
+<div id="screen-banking" class="screen">
+  <div class="topbar" style="padding-top:calc(env(safe-area-inset-top,0px) + 14px)">
+    <button class="back" onclick="goTo('dashboard')">←</button>
+    <h1>Contas Bancárias</h1>
+    <button class="action">＋</button>
+  </div>
+  <div class="content">
+    <!-- Account cards -->
+    <div class="acc-card">
+      <div class="acc-bank">Caixa Geral de Depósitos · PSD2</div>
+      <div class="acc-name">Conta Principal DG</div>
+      <div class="acc-iban">PT50 0033 0000 1234 5678 901 23</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+        <div class="badge green" style="background:rgba(255,255,255,.2);color:#fff">● Ativo</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6)">Sync: hoje 09:14</div>
+      </div>
+      <div class="acc-balance">125.000,00 €</div>
+      <div class="acc-currency">Disponível: 124.500,00 €</div>
+    </div>
+
+    <div class="acc-card" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">
+      <div class="acc-bank">Millennium BCP · PSD2</div>
+      <div class="acc-name">Conta Operacional</div>
+      <div class="acc-iban">PT50 0021 0000 9876 5432 101 23</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+        <div class="badge green" style="background:rgba(255,255,255,.2);color:#fff">● Ativo</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6)">Sync: hoje 09:12</div>
+      </div>
+      <div class="acc-balance">43.200,00 €</div>
+      <div class="acc-currency">Disponível: 43.200,00 €</div>
+    </div>
+
+    <div class="acc-card" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+      <div class="acc-bank">Santander · Manual</div>
+      <div class="acc-name">Conta Poupança</div>
+      <div class="acc-iban">PT50 0018 0000 4444 5555 666 78</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+        <div class="badge" style="background:rgba(255,255,255,.2);color:#fff">○ Manual</div>
+      </div>
+      <div class="acc-balance">18.500,00 €</div>
+      <div class="acc-currency">Sem sincronização automática</div>
+    </div>
+
+    <!-- Connect PSD2 -->
+    <div class="section-title">Ligar novo banco</div>
+    <div class="card">
+      <div class="list-row">
+        <div class="icon" style="background:#eff6ff">🏦</div>
+        <div class="main"><div class="title">Ligar via PSD2 (Salt Edge)</div><div class="desc">Autorização segura Open Banking</div></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#f0fdf4">📄</div>
+        <div class="main"><div class="title">Importar ficheiro</div><div class="desc">CSV, XLSX, MT940, OFX</div></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <!-- Providers PT -->
+    <div class="section-title">Bancos suportados em Portugal</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <div class="badge blue">CGD</div>
+      <div class="badge blue">Millennium BCP</div>
+      <div class="badge blue">Santander PT</div>
+      <div class="badge blue">BPI</div>
+      <div class="badge blue">Novo Banco</div>
+      <div class="badge blue">Banco CTT</div>
+      <div class="badge blue">Abanca</div>
+      <div class="badge blue">+ 40 bancos</div>
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-item" onclick="goTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item active" onclick="goTo('banking')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Contas
+    </button>
+    <button class="nav-item" onclick="goTo('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      Movimentos
+    </button>
+    <button class="nav-item" onclick="goTo('factoring')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Factoring
+    </button>
+    <button class="nav-item" onclick="goTo('more')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      Mais
+    </button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SCREEN 4 — TRANSACTIONS
+══════════════════════════════════════════ -->
+<div id="screen-transactions" class="screen">
+  <div class="topbar" style="padding-top:calc(env(safe-area-inset-top,0px) + 14px)">
+    <button class="back" onclick="goTo('dashboard')">←</button>
+    <h1>Movimentos</h1>
+    <button class="action">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="content">
+    <!-- Search bar -->
+    <div style="background:#fff;border-radius:12px;display:flex;align-items:center;gap:10px;padding:11px 14px;box-shadow:var(--shadow);margin-bottom:14px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input style="border:none;outline:none;font-size:14px;color:var(--text);flex:1;background:transparent" placeholder="Pesquisar movimentos..."/>
+    </div>
+
+    <!-- Pills -->
+    <div class="pills">
+      <button class="pill active">Todos</button>
+      <button class="pill">Entradas</button>
+      <button class="pill">Saídas</button>
+      <button class="pill">Mai 2025</button>
+      <button class="pill">Abr 2025</button>
+    </div>
+
+    <div class="section-title">21 Maio 2025</div>
+    <div class="card">
+      <div class="list-row"><div class="icon" style="background:#d1fae5">💳</div><div class="main"><div class="title">Cliente Europa, Lda</div><div class="desc">Fatura FAT-2025/0089</div></div><div class="right"><div class="amount pos">+12.400,00€</div><div class="date">09:45</div></div></div>
+      <div class="list-row"><div class="icon" style="background:#fee2e2">📦</div><div class="main"><div class="title">Transportes Maia</div><div class="desc">Serviços logística Maio</div></div><div class="right"><div class="amount neg">-2.840,00€</div><div class="date">10:12</div></div></div>
+      <div class="list-row"><div class="icon" style="background:#fee2e2">⚡</div><div class="main"><div class="title">EDP Energia</div><div class="desc">Fatura elétrica #4892</div></div><div class="right"><div class="amount neg">-487,32€</div><div class="date">11:00</div></div></div>
+    </div>
+
+    <div class="section-title">20 Maio 2025</div>
+    <div class="card">
+      <div class="list-row"><div class="icon" style="background:#d1fae5">🏢</div><div class="main"><div class="title">Multinatex SGPS</div><div class="desc">Pagamento fatura 2025/0044</div></div><div class="right"><div class="amount pos">+8.900,00€</div><div class="date">14:22</div></div></div>
+      <div class="list-row"><div class="icon" style="background:#fee2e2">👥</div><div class="main"><div class="title">Seg. Social</div><div class="desc">TSU Maio 2025</div></div><div class="right"><div class="amount neg">-4.210,00€</div><div class="date">15:00</div></div></div>
+      <div class="list-row"><div class="icon" style="background:#fee2e2">🏗️</div><div class="main"><div class="title">Construções Silva</div><div class="desc">Obra n.º 2025-14</div></div><div class="right"><div class="amount neg">-3.120,50€</div><div class="date">16:45</div></div></div>
+    </div>
+
+    <div class="section-title">19 Maio 2025</div>
+    <div class="card">
+      <div class="list-row"><div class="icon" style="background:#d1fae5">💰</div><div class="main"><div class="title">Iberdrola Portugal</div><div class="desc">Pagamento Confirming</div></div><div class="right"><div class="amount pos">+5.600,00€</div><div class="date">09:10</div></div></div>
+      <div class="list-row"><div class="icon" style="background:#fee2e2">📱</div><div class="main"><div class="title">NOS Comunicações</div><div class="desc">Telecomunicações Maio</div></div><div class="right"><div class="amount neg">-890,00€</div><div class="date">10:30</div></div></div>
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-item" onclick="goTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="goTo('banking')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Contas
+    </button>
+    <button class="nav-item active" onclick="goTo('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      Movimentos
+    </button>
+    <button class="nav-item" onclick="goTo('factoring')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Factoring
+    </button>
+    <button class="nav-item" onclick="goTo('more')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      Mais
+    </button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SCREEN 5 — FACTORING
+══════════════════════════════════════════ -->
+<div id="screen-factoring" class="screen">
+  <div class="topbar" style="padding-top:calc(env(safe-area-inset-top,0px) + 14px)">
+    <button class="back" onclick="goTo('dashboard')">←</button>
+    <h1>Factoring</h1>
+    <button class="action">＋</button>
+  </div>
+  <div class="content">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="label">Total Faturas</div><div class="value">12</div></div>
+      <div class="kpi"><div class="label">Pendente</div><div class="value">92.400€</div></div>
+      <div class="kpi full blue"><div class="label">Adiantado (taxa 85%)</div><div class="value">78.540€</div><div class="sub">Factor: Banco BPI Factoring</div></div>
+    </div>
+
+    <div class="pills">
+      <button class="pill active">Todas</button>
+      <button class="pill">Rascunho</button>
+      <button class="pill">Submetido</button>
+      <button class="pill">Aprovado</button>
+      <button class="pill">Cobrado</button>
+    </div>
+
+    <div class="card">
+      <div class="list-row">
+        <div class="icon" style="background:#dbeafe">📄</div>
+        <div class="main">
+          <div class="title">FAT-2025/0091</div>
+          <div class="desc">Iberdrola Portugal · Venc. 30 Jun</div>
+        </div>
+        <div class="right">
+          <div class="amount" style="color:var(--text)">28.400€</div>
+          <div class="badge blue" style="margin-top:4px">Aprovado</div>
+        </div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#d1fae5">📄</div>
+        <div class="main">
+          <div class="title">FAT-2025/0087</div>
+          <div class="desc">Galp Energia · Venc. 15 Jun</div>
+        </div>
+        <div class="right">
+          <div class="amount" style="color:var(--text)">22.000€</div>
+          <div class="badge green" style="margin-top:4px">Adiantado</div>
+        </div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#fef3c7">📄</div>
+        <div class="main">
+          <div class="title">FAT-2025/0084</div>
+          <div class="desc">EDP Renováveis · Venc. 10 Jun</div>
+        </div>
+        <div class="right">
+          <div class="amount" style="color:var(--text)">18.500€</div>
+          <div class="badge yellow" style="margin-top:4px">Submetido</div>
+        </div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#f3f4f6">📄</div>
+        <div class="main">
+          <div class="title">FAT-2025/0082</div>
+          <div class="desc">Brisa Autoestradas · Venc. 01 Jun</div>
+        </div>
+        <div class="right">
+          <div class="amount" style="color:var(--text)">15.200€</div>
+          <div class="badge gray" style="margin-top:4px">Rascunho</div>
+        </div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#ede9fe">📄</div>
+        <div class="main">
+          <div class="title">FAT-2025/0079</div>
+          <div class="desc">Jerónimo Martins · Venc. 25 Mai</div>
+        </div>
+        <div class="right">
+          <div class="amount" style="color:var(--text)">8.300€</div>
+          <div class="badge purple" style="margin-top:4px">Cobrado</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Lotes Ativos</div>
+    <div class="card">
+      <div class="card-body">
+        <div class="stat-row"><span class="sname">Lote #2025-05</span><span class="sval">3 faturas · 68.900€</span></div>
+        <div class="stat-row"><span class="sname">Factor</span><span class="sval">BPI Factoring</span></div>
+        <div class="stat-row"><span class="sname">Taxa adiantamento</span><span class="sval">85%</span></div>
+        <div class="stat-row"><span class="sname">Estado</span><span class="sval"><span class="badge green">Processado</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-item" onclick="goTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="goTo('banking')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Contas
+    </button>
+    <button class="nav-item" onclick="goTo('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      Movimentos
+    </button>
+    <button class="nav-item active" onclick="goTo('factoring')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Factoring
+    </button>
+    <button class="nav-item" onclick="goTo('more')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      Mais
+    </button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SCREEN 6 — MORE / MENU
+══════════════════════════════════════════ -->
+<div id="screen-more" class="screen">
+  <div class="topbar" style="padding-top:calc(env(safe-area-inset-top,0px) + 14px)">
+    <button class="back" onclick="goTo('dashboard')">←</button>
+    <h1>Menu</h1>
+  </div>
+  <div class="content">
+    <!-- User card -->
+    <div style="background:linear-gradient(135deg,var(--blue-dark),var(--blue));border-radius:18px;padding:20px;color:#fff;margin-bottom:18px;display:flex;align-items:center;gap:14px">
+      <div style="width:54px;height:54px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;border:2px solid rgba(255,255,255,.4)">A</div>
+      <div>
+        <div style="font-size:16px;font-weight:800">Administrador DG</div>
+        <div style="font-size:12px;opacity:.7;margin-top:2px">admin@dg-banksync.pt</div>
+        <div style="margin-top:6px"><span class="badge" style="background:rgba(255,255,255,.2);color:#fff;font-size:10px">● SuperAdmin</span></div>
+      </div>
+    </div>
+
+    <!-- Empresa ativa -->
+    <div class="section-title">Empresa Ativa</div>
+    <div class="card">
+      <div class="list-row">
+        <div class="icon" style="background:#eff6ff">🏢</div>
+        <div class="main"><div class="title">DG Holding, Lda.</div><div class="desc">NIF: 500 123 456</div></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <div class="section-title">Módulos</div>
+    <div class="card">
+      <div class="list-row" onclick="goTo('confirming')">
+        <div class="icon" style="background:#f0fdf4">✅</div>
+        <div class="main"><div class="title">Confirming</div><div class="desc">3 ordens ativas</div></div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="badge blue">27.800€</div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+      <div class="list-row" onclick="goTo('imports')">
+        <div class="icon" style="background:#fef9c3">📤</div>
+        <div class="main"><div class="title">Importação</div><div class="desc">CSV, XLSX, MT940, OFX</div></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#ede9fe">🏗️</div>
+        <div class="main"><div class="title">PHC Integration</div><div class="desc">Em desenvolvimento</div></div>
+        <div class="badge yellow">Brevemente</div>
+      </div>
+    </div>
+
+    <div class="section-title">Conta e Segurança</div>
+    <div class="card">
+      <div class="list-row">
+        <div class="icon" style="background:#eff6ff">🔐</div>
+        <div class="main"><div class="title">Autenticação 2FA</div><div class="desc">TOTP Ativo</div></div>
+        <div class="badge green">Ativo</div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#f3f4f6">🔑</div>
+        <div class="main"><div class="title">Alterar Senha</div><div class="desc">Última alteração: 15 Mai</div></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <button class="btn ghost" style="margin-top:8px" onclick="goTo('login')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Terminar Sessão
+    </button>
+
+    <div style="text-align:center;margin-top:20px;font-size:11px;color:var(--text2)">
+      DG BankSync Portugal v1.0.0 · PSD2 Compliant
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-item" onclick="goTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="goTo('banking')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Contas
+    </button>
+    <button class="nav-item" onclick="goTo('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      Movimentos
+    </button>
+    <button class="nav-item" onclick="goTo('factoring')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Factoring
+    </button>
+    <button class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      Mais
+    </button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SCREEN 7 — CONFIRMING
+══════════════════════════════════════════ -->
+<div id="screen-confirming" class="screen">
+  <div class="topbar" style="padding-top:calc(env(safe-area-inset-top,0px) + 14px)">
+    <button class="back" onclick="goTo('more')">←</button>
+    <h1>Confirming</h1>
+    <button class="action">＋</button>
+  </div>
+  <div class="content">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="label">Total Ordens</div><div class="value">7</div></div>
+      <div class="kpi"><div class="label">Valor Total</div><div class="value">27.800€</div></div>
+      <div class="kpi"><div class="label">Pendente</div><div class="value" style="color:var(--blue)">18.200€</div></div>
+      <div class="kpi"><div class="label">Pago</div><div class="value" style="color:var(--green)">9.600€</div></div>
+    </div>
+
+    <div class="pills">
+      <button class="pill active">Todas</button>
+      <button class="pill">Rascunho</button>
+      <button class="pill">Enviado</button>
+      <button class="pill">Pago</button>
+    </div>
+
+    <div class="card">
+      <div class="list-row">
+        <div class="icon" style="background:#dbeafe">🏭</div>
+        <div class="main"><div class="title">Fornecedor Alfa, Lda</div><div class="desc">Banco: CGD · Venc. 30 Jun</div></div>
+        <div class="right"><div class="amount" style="color:var(--text)">8.400€</div><div class="badge blue" style="margin-top:4px">Enviado</div></div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#dbeafe">🔧</div>
+        <div class="main"><div class="title">TecnoServ, SA</div><div class="desc">Banco: BPI · Venc. 15 Jun</div></div>
+        <div class="right"><div class="amount" style="color:var(--text)">6.200€</div><div class="badge blue" style="margin-top:4px">Enviado</div></div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#f3f4f6">📦</div>
+        <div class="main"><div class="title">Logística Norte</div><div class="desc">Banco: Santander · Venc. 10 Jun</div></div>
+        <div class="right"><div class="amount" style="color:var(--text)">3.600€</div><div class="badge gray" style="margin-top:4px">Rascunho</div></div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#d1fae5">🏗️</div>
+        <div class="main"><div class="title">Construções Mota</div><div class="desc">Banco: Novo Banco · Pago 18 Mai</div></div>
+        <div class="right"><div class="amount" style="color:var(--text)">5.800€</div><div class="badge green" style="margin-top:4px">Pago</div></div>
+      </div>
+    </div>
+
+    <div class="alert blue">
+      <strong>Desc. pagamento antecipado:</strong> A ordem para TecnoServ tem 2% de desconto se pago até 25 Mai — poupa 124€.
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-item" onclick="goTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="goTo('banking')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+      Contas
+    </button>
+    <button class="nav-item" onclick="goTo('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      Movimentos
+    </button>
+    <button class="nav-item" onclick="goTo('factoring')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>
+      Factoring
+    </button>
+    <button class="nav-item active" onclick="goTo('more')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      Mais
+    </button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SCREEN 8 — IMPORTS
+══════════════════════════════════════════ -->
+<div id="screen-imports" class="screen">
+  <div class="topbar" style="padding-top:calc(env(safe-area-inset-top,0px) + 14px)">
+    <button class="back" onclick="goTo('more')">←</button>
+    <h1>Importação</h1>
+  </div>
+  <div class="content">
+    <div class="alert blue">Importação manual de extratos como alternativa à ligação PSD2.</div>
+
+    <div class="card" style="border:2px dashed #93c5fd;background:#eff6ff">
+      <div class="card-body" style="text-align:center;padding:32px 16px">
+        <div style="font-size:48px;margin-bottom:12px">📤</div>
+        <div style="font-size:15px;font-weight:700;color:var(--blue);margin-bottom:6px">Selecionar ficheiro</div>
+        <div style="font-size:12px;color:var(--text2)">CSV · XLSX · MT940 · OFX · QIF</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">máx. 50 MB</div>
+        <div style="margin-top:16px;font-size:12px;color:var(--text2)">Conta destino: <strong>Conta Principal CGD</strong></div>
+      </div>
+    </div>
+
+    <div class="section-title">Importações Recentes</div>
+    <div class="card">
+      <div class="list-row">
+        <div class="icon" style="background:#d1fae5">📊</div>
+        <div class="main"><div class="title">extrato_cgd_maio.xlsx</div><div class="desc">87 movimentos importados</div></div>
+        <div class="right"><div class="badge green">OK</div><div class="date">21 Mai 09:00</div></div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#d1fae5">📋</div>
+        <div class="main"><div class="title">bcp_abril_2025.csv</div><div class="desc">143 movimentos importados</div></div>
+        <div class="right"><div class="badge green">OK</div><div class="date">01 Mai 14:30</div></div>
+      </div>
+      <div class="list-row">
+        <div class="icon" style="background:#d1fae5">📄</div>
+        <div class="main"><div class="title">extrato_mar.mt940</div><div class="desc">98 movimentos importados</div></div>
+        <div class="right"><div class="badge green">OK</div><div class="date">01 Abr 10:15</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-item" onclick="goTo('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</button>
+    <button class="nav-item" onclick="goTo('banking')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>Contas</button>
+    <button class="nav-item" onclick="goTo('transactions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>Movimentos</button>
+    <button class="nav-item" onclick="goTo('factoring')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>Factoring</button>
+    <button class="nav-item active" onclick="goTo('more')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>Mais</button>
+  </div>
+</div>
+
+
+<script>
+  let current = 'login';
+
+  function goTo(id) {
+    const prev = document.getElementById('screen-' + current);
+    const next = document.getElementById('screen-' + id);
+    if (!next || id === current) return;
+
+    // Animate out
+    prev.classList.add('prev');
+    prev.classList.remove('active');
+
+    // Animate in
+    next.style.display = 'flex';
+    next.style.transform = 'translateX(100%)';
+    next.style.opacity = '0';
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        next.classList.add('active');
+        next.style.transform = '';
+        next.style.opacity = '';
+      });
+    });
+
+    setTimeout(() => {
+      prev.style.display = 'none';
+      prev.classList.remove('prev');
+    }, 350);
+
+    current = id;
+  }
+
+  // Swipe back gesture
+  let startX = 0;
+  document.addEventListener('touchstart', e => startX = e.touches[0].clientX, {passive:true});
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (dx > 80 && startX < 40) {
+      const backBtn = document.getElementById('screen-' + current)?.querySelector('.back');
+      if (backBtn) backBtn.click();
+    }
+  }, {passive:true});
+</script>
+</body>
+</html>
