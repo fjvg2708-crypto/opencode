@@ -1,0 +1,72 @@
+name: dg-asset-platform
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dg
+      POSTGRES_PASSWORD: dg
+      POSTGRES_DB: dg_assets
+    ports:
+      - "5432:5432"
+    volumes:
+      - dg_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dg -d dg_assets"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: dgminio
+      MINIO_ROOT_PASSWORD: dgminio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - dg_minio_data:/data
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://dg:dg@db:5432/dg_assets?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: change-me-access-secret
+      JWT_REFRESH_SECRET: change-me-refresh-secret
+      APP_BASE_URL: http://localhost:5173
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  web:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000/api/v1
+    ports:
+      - "5173:5173"
+
+volumes:
+  dg_db_data:
+  dg_minio_data:

@@ -1,0 +1,125 @@
+:root {
+  --dg-blue: #0b3d91;
+  --dg-blue-dark: #082a63;
+  --dg-bg: #f4f6f9;
+  --dg-text: #1a1f2b;
+  --dg-danger: #c0392b;
+  --dg-warning: #e8a33d;
+  --dg-success: #2e8b57;
+  --dg-border: #d8dee6;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--dg-bg);
+  color: var(--dg-text);
+}
+
+a { color: var(--dg-blue); }
+
+.dg-app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.dg-header {
+  background: var(--dg-blue);
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.dg-header h1 { font-size: 18px; margin: 0; }
+
+.dg-nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  background: var(--dg-blue-dark);
+  padding: 4px 8px;
+}
+
+.dg-nav a {
+  color: white;
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.dg-nav a.active, .dg-nav a:hover { background: rgba(255,255,255,0.18); }
+
+.dg-main { flex: 1; padding: 16px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+/* Botões grandes para uso em obra — secção 44 */
+.dg-btn {
+  min-height: 52px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  padding: 0 20px;
+  cursor: pointer;
+  background: var(--dg-blue);
+  color: white;
+}
+.dg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.dg-btn.secondary { background: white; color: var(--dg-blue); border: 2px solid var(--dg-blue); }
+.dg-btn.danger { background: var(--dg-danger); }
+.dg-btn.block { width: 100%; }
+
+.dg-card {
+  background: white;
+  border: 1px solid var(--dg-border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.dg-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.dg-field label { font-weight: 600; font-size: 14px; }
+.dg-field input, .dg-field select, .dg-field textarea {
+  min-height: 46px;
+  border-radius: 10px;
+  border: 1px solid var(--dg-border);
+  padding: 8px 12px;
+  font-size: 16px;
+}
+
+.dg-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #e6ecf7;
+  color: var(--dg-blue);
+}
+.dg-badge.warning { background: #fdf1de; color: #96650f; }
+.dg-badge.danger { background: #fbe6e3; color: var(--dg-danger); }
+.dg-badge.success { background: #e4f3e9; color: var(--dg-success); }
+
+.dg-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+.dg-offline-banner {
+  background: var(--dg-warning);
+  color: #402c05;
+  text-align: center;
+  padding: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dg-stepper { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.dg-step { padding: 6px 12px; border-radius: 999px; background: #e6ecf7; color: var(--dg-blue); font-size: 13px; font-weight: 600; }
+.dg-step.active { background: var(--dg-blue); color: white; }

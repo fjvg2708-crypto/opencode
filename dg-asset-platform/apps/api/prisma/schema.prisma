@@ -1,0 +1,835 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Universal / cross-cutting
+// ─────────────────────────────────────────────────────────────────────────
+
+enum SourceSystem {
+  INTERNAL
+  PHC
+  PRIMAVERA
+  SAP
+  SAGE
+  ODOO
+  DYNAMICS
+  OTHER
+}
+
+enum SyncState {
+  NOT_SYNCED
+  PENDING
+  SYNCED
+  CONFLICT
+  ERROR
+}
+
+enum DataOwnership {
+  INTERNAL_MASTER
+  EXTERNAL_MASTER
+  BOTH_EDITABLE
+  IMPORT_ONLY
+  EXPORT_ONLY
+  REQUIRES_APPROVAL
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Auth / RBAC
+// ─────────────────────────────────────────────────────────────────────────
+
+enum RoleName {
+  ADMIN
+  DIRECTION
+  FLEET_MANAGER
+  EQUIPMENT_MANAGER
+  SITE_SUPERVISOR
+  WAREHOUSE_MANAGER
+  MECHANIC
+  WORKSHOP
+  DRIVER
+  OPERATOR
+  EMPLOYEE
+  AUDITOR
+  INTEGRATION_TECH
+}
+
+model User {
+  id            String    @id @default(uuid())
+  internalCode  String    @unique
+  email         String    @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  active        Boolean   @default(true)
+  mfaEnabled    Boolean   @default(false)
+  mfaSecret     String?
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+  personId      String?   @unique
+  person        Person?   @relation(fields: [personId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        RoleName         @unique
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id])
+  role   Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+}
+
+model Permission {
+  id     String            @id @default(uuid())
+  module String
+  action String
+  roles  RolePermission[]
+
+  @@unique([module, action])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  scopeType    String? // WORK | WAREHOUSE | COST_CENTER | null (global)
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokenHash String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Organização: pessoas, obras, armazéns, centros de custo, parceiros
+// ─────────────────────────────────────────────────────────────────────────
+
+model Person {
+  id           String   @id @default(uuid())
+  internalCode String   @unique
+  name         String
+  email        String?
+  phone        String?
+  employeeNo   String?
+  team         String?
+  active       Boolean  @default(true)
+  user         User?
+  assetsOwned  Asset[]  @relation("AssetResponsible")
+  movementsFrom Movement[] @relation("MovementFromPerson")
+  movementsTo   Movement[] @relation("MovementToPerson")
+  sourceSystem SourceSystem @default(INTERNAL)
+  syncState    SyncState    @default(NOT_SYNCED)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+}
+
+model Work {
+  id           String    @id @default(uuid())
+  internalCode String    @unique
+  name         String
+  client       String?
+  address      String?
+  startDate    DateTime?
+  endDate      DateTime?
+  active       Boolean   @default(true)
+  assets       Asset[]
+  movements    Movement[]
+  breakdowns   Breakdown[]
+  sourceSystem SourceSystem @default(INTERNAL)
+  syncState    SyncState    @default(NOT_SYNCED)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+}
+
+model Warehouse {
+  id           String   @id @default(uuid())
+  internalCode String   @unique
+  name         String
+  address      String?
+  managerId    String?
+  active       Boolean  @default(true)
+  assets       Asset[]
+  stockItems   StockItem[]
+  sourceSystem SourceSystem @default(INTERNAL)
+  syncState    SyncState    @default(NOT_SYNCED)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+}
+
+model CostCenter {
+  id           String   @id @default(uuid())
+  internalCode String   @unique
+  name         String
+  active       Boolean  @default(true)
+  assets       Asset[]
+  sourceSystem SourceSystem @default(INTERNAL)
+  syncState    SyncState    @default(NOT_SYNCED)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum PartnerType {
+  SUPPLIER
+  CLIENT
+  WORKSHOP
+}
+
+model Partner {
+  id           String      @id @default(uuid())
+  internalCode String      @unique
+  type         PartnerType
+  name         String
+  taxId        String?
+  email        String?
+  phone        String?
+  address      String?
+  active       Boolean     @default(true)
+  maintenanceOrders MaintenanceOrder[]
+  sourceSystem SourceSystem @default(INTERNAL)
+  syncState    SyncState    @default(NOT_SYNCED)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Ativos
+// ─────────────────────────────────────────────────────────────────────────
+
+enum AssetType {
+  VEHICLE
+  MACHINE
+  EQUIPMENT
+  HEAVY_EQUIPMENT
+  TOOL
+  ACCESSORY
+  PART
+  CONTROLLED_MATERIAL
+  OTHER
+}
+
+enum AssetStatus {
+  DRAFT
+  PROCESSING
+  PENDING_VALIDATION
+  VALIDATED
+  ACTIVE
+  AVAILABLE
+  IN_USE
+  RESERVED
+  IN_TRANSIT
+  IN_MAINTENANCE
+  BROKEN
+  BLOCKED
+  LOST
+  INACTIVE
+  DECOMMISSIONED
+  ARCHIVED
+}
+
+enum ConditionRating {
+  EXCELLENT
+  GOOD
+  FAIR
+  NEEDS_INTERVENTION
+  CRITICAL
+  RECOMMEND_REPLACEMENT
+}
+
+// Rascunho de ficha, criado durante o wizard de OCR/IA. Nunca é apagado.
+model AssetDraft {
+  id              String    @id @default(uuid())
+  assetType       AssetType
+  category        String?
+  status          String    @default("PROCESSING") // PROCESSING | PENDING_VALIDATION | CONVERTED | DISCARDED
+  photos          DraftPhoto[]
+  documents       DraftDocument[]
+  extractedFields ExtractedField[]
+  possibleDuplicateOfId String?
+  convertedAssetId String?
+  createdById     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model DraftPhoto {
+  id        String     @id @default(uuid())
+  draftId   String
+  draft     AssetDraft @relation(fields: [draftId], references: [id])
+  kind      String // OVERVIEW|FRONT|BACK|SIDE|INTERIOR|PLATE|DATA_PLATE|SERIAL|VIN|ODOMETER|HOUR_METER|DAMAGE|COMPONENT|ACCESSORY
+  storageKey String
+  createdAt DateTime   @default(now())
+}
+
+model DraftDocument {
+  id         String     @id @default(uuid())
+  draftId    String
+  draft      AssetDraft @relation(fields: [draftId], references: [id])
+  docType    String
+  storageKey String
+  createdAt  DateTime   @default(now())
+}
+
+model ExtractedField {
+  id               String     @id @default(uuid())
+  draftId          String
+  draft            AssetDraft @relation(fields: [draftId], references: [id])
+  field            String
+  value            String
+  confidence       Float
+  sourceDocumentId String?
+  sourcePhotoId    String?
+  status           String     @default("PENDING") // PENDING|CONFIRMED|CORRECTED|REJECTED
+  correctedValue   String?
+  validatedById    String?
+  validatedAt      DateTime?
+  createdAt        DateTime   @default(now())
+}
+
+model Asset {
+  id             String      @id @default(uuid())
+  internalCode   String      @unique
+  externalCode   String?
+  sourceSystem   SourceSystem @default(INTERNAL)
+  syncState      SyncState    @default(NOT_SYNCED)
+
+  assetType      AssetType
+  category       String?
+  subcategory    String?
+  designation    String
+  description    String?
+  brand          String?
+  model          String?
+  serialNumber   String?
+  plate          String?     // matrícula
+  vin            String?
+  chassisNumber  String?
+  engineNumber   String?
+  manufacturerRef String?
+  yearOfManufacture Int?
+
+  acquisitionDate  DateTime?
+  acquisitionValue Decimal?  @db.Decimal(14, 2)
+  bookValue        Decimal?  @db.Decimal(14, 2)
+  estimatedValue   Decimal?  @db.Decimal(14, 2)
+  warrantyUntil    DateTime?
+  supplierId       String?
+
+  costCenterId   String?
+  costCenter     CostCenter? @relation(fields: [costCenterId], references: [id])
+  workId         String?
+  work           Work?       @relation(fields: [workId], references: [id])
+  warehouseId    String?
+  warehouse      Warehouse?  @relation(fields: [warehouseId], references: [id])
+  responsibleId  String?
+  responsible    Person?     @relation("AssetResponsible", fields: [responsibleId], references: [id])
+  team           String?
+
+  status         AssetStatus @default(DRAFT)
+  conditionRating ConditionRating?
+  conditionReason String?
+
+  odometerKm     Int?
+  hourMeter      Float?
+
+  vehicleDetail    VehicleDetail?
+  equipmentDetail  EquipmentDetail?
+
+  photos         AssetPhoto[]
+  documents      Document[]
+  qrCodes        QrCode[]
+  movementsAsAsset Movement[]
+  maintenanceOrders MaintenanceOrder[]
+  breakdowns     Breakdown[]
+  costEntries    CostEntry[]
+  partUsages     PartUsage[]
+  auditLogs      AuditLog[]
+
+  observations   String?
+  createdById    String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  @@index([assetType, status])
+  @@index([plate])
+  @@index([vin])
+  @@index([serialNumber])
+}
+
+model VehicleDetail {
+  id                String   @id @default(uuid())
+  assetId           String   @unique
+  asset             Asset    @relation(fields: [assetId], references: [id])
+  version           String?
+  fuelType          String?
+  engineDisplacement Int?
+  power             Int?
+  color             String?
+  seats             Int?
+  tareWeight        Int?
+  grossWeight       Int?
+  firstRegistrationDate DateTime?
+  insurer           String?
+  policyNumber      String?
+  insuranceValidUntil DateTime?
+  lastInspectionDate DateTime?
+  nextInspectionDate DateTime?
+  roadTaxDue        DateTime?
+  tollDeviceId      String?
+  usualWorkshop     String?
+}
+
+model EquipmentDetail {
+  id                String   @id @default(uuid())
+  assetId           String   @unique
+  asset             Asset    @relation(fields: [assetId], references: [id])
+  power             Float?
+  weight            Float?
+  capacity          String?
+  voltage           Int?
+  frequencyHz       Int?
+  fuelType          String?
+  certifications    String?
+  maintenanceIntervalHours Int?
+  safetyRequirements String?
+}
+
+model AssetPhoto {
+  id         String   @id @default(uuid())
+  assetId    String
+  asset      Asset    @relation(fields: [assetId], references: [id])
+  kind       String
+  storageKey String
+  takenAt    DateTime @default(now())
+  uploadedById String
+}
+
+enum DocumentType {
+  REGISTRATION
+  INSURANCE_POLICY
+  INSPECTION_CERTIFICATE
+  PURCHASE_INVOICE
+  MANUAL
+  DATASHEET
+  CONFORMITY_CERTIFICATE
+  SAFETY_CERTIFICATE
+  MAINTENANCE_REPORT
+  SERVICE_ORDER
+  QUOTE
+  INVOICE
+  DELIVERY_NOTE
+  RESPONSIBILITY_TERM
+  OTHER
+}
+
+model Document {
+  id            String       @id @default(uuid())
+  assetId       String?
+  asset         Asset?       @relation(fields: [assetId], references: [id])
+  type          DocumentType
+  title         String
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  issuer        String?
+  storageKey    String
+  version       Int          @default(1)
+  confidentiality String     @default("INTERNAL") // PUBLIC|INTERNAL|RESTRICTED
+  uploadedById  String
+  createdAt     DateTime     @default(now())
+  deletedAt     DateTime?
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// QR Code
+// ─────────────────────────────────────────────────────────────────────────
+
+model QrCode {
+  id         String   @id @default(uuid())
+  assetId    String
+  asset      Asset    @relation(fields: [assetId], references: [id])
+  token      String   @unique // opaque, random — no embedded data
+  active     Boolean  @default(true)
+  version    Int      @default(1)
+  events     QrCodeEvent[]
+  createdAt  DateTime @default(now())
+}
+
+model QrCodeEvent {
+  id         String   @id @default(uuid())
+  qrCodeId   String
+  qrCode     QrCode   @relation(fields: [qrCodeId], references: [id])
+  eventType  String // EMITTED|REPRINTED|REPLACED|DEACTIVATED|SCANNED
+  reason     String?
+  userId     String?
+  createdAt  DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Movimentos: entregas, devoluções, transferências
+// ─────────────────────────────────────────────────────────────────────────
+
+enum MovementType {
+  DELIVERY
+  RETURN
+  TRANSFER_WORK
+  TRANSFER_WAREHOUSE
+  RESERVATION
+  RESPONSIBLE_CHANGE
+}
+
+enum MovementStatus {
+  PENDING
+  CONFIRMED
+  PARTIAL_RETURN
+  LOST
+  DAMAGED
+  LATE
+  CANCELLED
+}
+
+model Movement {
+  id             String         @id @default(uuid())
+  assetId        String
+  asset          Asset          @relation(fields: [assetId], references: [id])
+  type           MovementType
+  status         MovementStatus @default(PENDING)
+  fromPersonId   String?
+  fromPerson     Person?        @relation("MovementFromPerson", fields: [fromPersonId], references: [id])
+  toPersonId     String?
+  toPerson       Person?        @relation("MovementToPerson", fields: [toPersonId], references: [id])
+  fromWarehouseId String?
+  toWarehouseId  String?
+  workId         String?
+  work           Work?          @relation(fields: [workId], references: [id])
+  expectedReturnAt DateTime?
+  confirmedAt    DateTime?
+  gpsLat         Float?
+  gpsLng         Float?
+  signatureKey   String?
+  photos         Json?
+  observations   String?
+  clientOperationId String?     @unique // idempotência para sync offline
+  createdById    String
+  createdAt      DateTime       @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Manutenção, avarias, peças
+// ─────────────────────────────────────────────────────────────────────────
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+  INSPECTION
+  REVISION
+  REPAIR
+}
+
+enum MaintenanceStatus {
+  REQUESTED
+  QUOTED
+  APPROVED
+  IN_PROGRESS
+  AWAITING_PARTS
+  DONE
+  CLOSED
+  CANCELLED
+}
+
+model MaintenanceOrder {
+  id             String             @id @default(uuid())
+  internalCode   String             @unique
+  assetId        String
+  asset          Asset              @relation(fields: [assetId], references: [id])
+  type           MaintenanceType
+  reason         String?
+  status         MaintenanceStatus  @default(REQUESTED)
+  workshopId     String?
+  workshop       Partner?           @relation(fields: [workshopId], references: [id])
+  mechanicName   String?
+  technicianName String?
+  entryDate      DateTime?
+  exitDate       DateTime?
+  workDescription String?
+  laborCost      Decimal?           @db.Decimal(14, 2)
+  partsCost      Decimal?           @db.Decimal(14, 2)
+  otherCosts     Decimal?           @db.Decimal(14, 2)
+  odometerKm     Int?
+  hourMeter      Float?
+  quoteDocumentId String?
+  invoiceDocumentId String?
+  nextRevisionAt DateTime?
+  nextMaintenanceAt DateTime?
+  approvedById   String?
+  approvedAt     DateTime?
+  partUsages     PartUsage[]
+  createdById    String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  closedAt       DateTime?
+}
+
+enum PartReturnStatus {
+  RETURNED_TO_VEHICLE
+  DELIVERED_TO_RESPONSIBLE
+  EXEMPT
+  NOT_RETURNED_JUSTIFIED
+}
+
+model PartUsage {
+  id                 String            @id @default(uuid())
+  maintenanceOrderId String
+  maintenanceOrder   MaintenanceOrder  @relation(fields: [maintenanceOrderId], references: [id])
+  assetId            String
+  asset              Asset             @relation(fields: [assetId], references: [id])
+  articleId          String?
+  article            Article?          @relation(fields: [articleId], references: [id])
+  reference          String?
+  description        String
+  quantity            Float             @default(1)
+  reason             String?
+  photoKey            String?
+  conditionNotes      String?
+  returnStatus        PartReturnStatus?
+  nonReturnReason      String?
+  receivedById        String?
+  dgConfirmed          Boolean           @default(false)
+  createdAt            DateTime          @default(now())
+}
+
+model Breakdown {
+  id              String          @id @default(uuid())
+  internalCode    String          @unique
+  assetId         String
+  asset           Asset           @relation(fields: [assetId], references: [id])
+  workId          String?
+  work            Work?           @relation(fields: [workId], references: [id])
+  priority        String          // LOW|NORMAL|HIGH|URGENT|CRITICAL
+  status          String          @default("REPORTED") // REPORTED|ANALYSIS|AWAITING_APPROVAL|AWAITING_PARTS|IN_REPAIR|RESOLVED|CLOSED|REJECTED
+  description     String
+  photos          Json?
+  videoKey        String?
+  usableWhileBroken Boolean?
+  safetyRisk      Boolean         @default(false)
+  immediateAction String?
+  assignedToId    String?
+  reportedById    String
+  reportedAt      DateTime        @default(now())
+  resolvedAt      DateTime?
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Custos
+// ─────────────────────────────────────────────────────────────────────────
+
+model CostEntry {
+  id          String   @id @default(uuid())
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id])
+  category    String // MAINTENANCE|FUEL|INSURANCE|TAX|FINE|OTHER
+  amount      Decimal  @db.Decimal(14, 2)
+  currency    String   @default("EUR")
+  referenceId String?  // e.g. maintenanceOrderId
+  incurredAt  DateTime
+  createdAt   DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Stock / peças / artigos
+// ─────────────────────────────────────────────────────────────────────────
+
+model Article {
+  id           String   @id @default(uuid())
+  internalCode String   @unique
+  name         String
+  family       String?
+  unit         String   @default("UN")
+  category     String? // OIL|FILTER|PART|CONSUMABLE|OTHER — usado na regra de exceção de devolução
+  minStock     Float?   @default(0)
+  avgCost      Decimal? @db.Decimal(14, 2)
+  stockItems   StockItem[]
+  partUsages   PartUsage[]
+  sourceSystem SourceSystem @default(INTERNAL)
+  syncState    SyncState    @default(NOT_SYNCED)
+  createdAt    DateTime @default(now())
+  deletedAt    DateTime?
+}
+
+model StockItem {
+  id          String    @id @default(uuid())
+  articleId   String
+  article     Article   @relation(fields: [articleId], references: [id])
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  quantity    Float     @default(0)
+  reserved    Float     @default(0)
+  movements   StockMovement[]
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([articleId, warehouseId])
+}
+
+model StockMovement {
+  id          String    @id @default(uuid())
+  stockItemId String
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id])
+  type        String // IN|OUT|TRANSFER|ADJUSTMENT|RESERVATION
+  quantity    Float
+  reason      String?
+  referenceId String?
+  createdById String
+  createdAt   DateTime  @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Auditoria
+// ─────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  entityType String
+  entityId   String
+  assetId    String?
+  asset      Asset?   @relation(fields: [assetId], references: [id])
+  action     String // CREATE|UPDATE|DELETE|APPROVE|REJECT|DELIVER|RETURN|TRANSFER|QR_ISSUE|QR_REPRINT|IMPORT|EXPORT|SYNC
+  beforeState Json?
+  afterState  Json?
+  reason      String?
+  userId      String
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Alertas
+// ─────────────────────────────────────────────────────────────────────────
+
+model Alert {
+  id          String   @id @default(uuid())
+  type        String
+  severity    String   @default("NORMAL") // LOW|NORMAL|HIGH|CRITICAL
+  entityType  String?
+  entityId    String?
+  message     String
+  status      String   @default("OPEN") // OPEN|ACKNOWLEDGED|RESOLVED
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Integração (Fase 2 scaffold — sem conectores ativos)
+// ─────────────────────────────────────────────────────────────────────────
+
+model IntegrationConnector {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  type        String // REST|SOAP|CSV|SFTP|DATABASE
+  enabled     Boolean  @default(false)
+  config      Json?
+  createdAt   DateTime @default(now())
+}
+
+model FieldMapping {
+  id             String   @id @default(uuid())
+  connectorName  String
+  entityType     String
+  internalField  String
+  externalField  String
+  direction      String   @default("BOTH") // IN|OUT|BOTH
+
+  @@unique([connectorName, entityType, internalField])
+}
+
+model DataOwnershipRule {
+  id         String        @id @default(uuid())
+  entityType String        @unique
+  ownership  DataOwnership @default(INTERNAL_MASTER)
+}
+
+model SyncLog {
+  id          String   @id @default(uuid())
+  connectorName String
+  entityType  String
+  entityId    String?
+  direction   String // PULL|PUSH
+  status      String // SUCCESS|ERROR|CONFLICT
+  message     String?
+  payload     Json?
+  createdAt   DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sincronização offline (secção 24) — fila única de idempotência para
+// qualquer tipo de operação registada em obra sem ligação à internet.
+// ─────────────────────────────────────────────────────────────────────────
+
+model SyncOperation {
+  id               String    @id @default(uuid())
+  clientOperationId String   @unique
+  type             String // MOVEMENT|BREAKDOWN|ASSET_READING|QR_SCAN
+  payload          Json
+  status           String    @default("PENDING") // PENDING|APPLIED|ERROR|CONFLICT
+  resultEntityId   String?
+  errorMessage     String?
+  deviceId         String?
+  createdById      String
+  createdAt        DateTime  @default(now())
+  appliedAt        DateTime?
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Importação/Exportação
+// ─────────────────────────────────────────────────────────────────────────
+
+model ImportBatch {
+  id          String   @id @default(uuid())
+  entityType  String
+  fileName    String
+  status      String   @default("SIMULATED") // SIMULATED|CONFIRMED|REVERTED
+  totalRows   Int      @default(0)
+  errorRows   Int      @default(0)
+  createdById String
+  createdAt   DateTime @default(now())
+  rows        ImportRow[]
+}
+
+model ImportRow {
+  id            String      @id @default(uuid())
+  batchId       String
+  batch         ImportBatch @relation(fields: [batchId], references: [id])
+  rowNumber     Int
+  data          Json
+  status        String // OK|ERROR|DUPLICATE
+  errorMessage  String?
+  createdEntityId String?
+}
